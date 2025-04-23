@@ -67,12 +67,12 @@ def fetch_recent_entries():
 def summarize_news_with_gemini(entries):
     if not entries:
         return "전날 08:00 이후 새로운 세계 뉴스가 없습니다."
-    prompt = "아래 뉴스 목록을 보고, 전날 08:00(서울시간) 이후 주요 사건을 3문장으로 요약해주세요.\n\n"
+    prompt = "아래 뉴스 목록을 보고, 전날 08:00(서울시간) 이후 주요 사건들을 제목 - 요약 템플릿으로 정리해주세요.\n\n"
     prompt += "\n".join(entries)
 
     try:
         res = model.generate_content(prompt)
-        return res.text.strip()
+        return res.text
     except Exception as e:
         print(f"Error calling Gemini API: {e}")
         return "AI 코드 리뷰 생성 중 오류가 발생했습니다."
