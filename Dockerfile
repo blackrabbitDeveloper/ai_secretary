@@ -15,4 +15,4 @@ COPY main.py .
 ENV PORT 8080
 
 # 컨테이너 시작 커맨드
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "main:app"]
+CMD ["python", "main.py"]
