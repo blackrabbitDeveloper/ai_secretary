@@ -3,10 +3,9 @@ import os
 import requests
 import feedparser
 import pytz
+from google import genai
 from datetime import datetime, timedelta
 from flask import Flask, jsonify
-from google import genai
-from google.genai.types import HttpOptions
 
 app = Flask(__name__)
 
