@@ -3,4 +3,3 @@ requests==2.31.0
 feedparser
 pytz
 google-genai
-gunicorn==20.1.0
