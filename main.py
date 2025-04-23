@@ -3,7 +3,7 @@ import os
 import requests
 import feedparser
 import pytz
-from google import genai
+import google.generativeai as genai
 from datetime import datetime, timedelta
 from flask import Flask, jsonify
 
