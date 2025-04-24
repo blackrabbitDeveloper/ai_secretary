@@ -24,30 +24,60 @@ model = genai.GenerativeModel('gemini-1.5-pro')
 
 # 1) 날씨 조회
 def fetch_weather():
+    # 현재 날씨
     url = "https://api.openweathermap.org/data/2.5/weather"
     params = {"q": CITY, "appid": OPENWEATHER_API_KEY, "units": "metric", "lang": "kr"}
     r = requests.get(url, params=params); r.raise_for_status()
-    w = r.json()
+    current = r.json()
+    
+    # 시간별 예보
+    forecast_url = "https://api.openweathermap.org/data/2.5/forecast"
+    r = requests.get(forecast_url, params=params); r.raise_for_status()
+    forecast = r.json()
+    
+    # 다음 24시간 예보 (3시간 간격)
+    hourly_temps = []
+    now = datetime.now(TZ)
+    for item in forecast['list']:
+        dt = datetime.fromtimestamp(item['dt'], TZ)
+        if dt <= now + timedelta(hours=24):
+            hourly_temps.append({
+                "time": dt.strftime("%H:%M"),
+                "temp": item['main']['temp'],
+                "icon": item['weather'][0]['icon']
+            })
+    
     return {
-        "desc": w["weather"][0]["description"].capitalize(),
-        "temp": w["main"]["temp"],
-        "feels": w["main"]["feels_like"],
-        "humidity": w["main"]["humidity"],
-        "icon": w["weather"][0]["icon"],
+        "current": {
+            "desc": current["weather"][0]["description"].capitalize(),
+            "temp": current["main"]["temp"],
+            "feels": current["main"]["feels_like"],
+            "humidity": current["main"]["humidity"],
+            "icon": current["weather"][0]["icon"],
+        },
+        "hourly": hourly_temps
     }
 
 def build_weather_embed(data):
-    icon_url = f"https://openweathermap.org/img/wn/{data['icon']}@2x.png"
+    icon_url = f"https://openweathermap.org/img/wn/{data['current']['icon']}@2x.png"
     title = f"{CITY} 오늘의 날씨 ({datetime.now(TZ).strftime('%Y-%m-%d')})"
+    
+    # 시간별 기온 그래프 생성
+    hourly_text = "```\n시간별 기온:\n"
+    for hour in data['hourly']:
+        hourly_text += f"{hour['time']}: {hour['temp']}°C\n"
+    hourly_text += "```"
+    
     return {
         "title": title,
-        "description": data["desc"],
+        "description": data["current"]["desc"],
         "color": 0x3498db,
         "thumbnail": {"url": icon_url},
         "fields": [
-            {"name": "🌡️ 온도", "value": f"{data['temp']}°C", "inline": True},
-            {"name": "🤗 체감", "value": f"{data['feels']}°C", "inline": True},
-            {"name": "💧 습도", "value": f"{data['humidity']}%", "inline": True},
+            {"name": "🌡️ 현재 온도", "value": f"{data['current']['temp']}°C", "inline": True},
+            {"name": "🤗 체감 온도", "value": f"{data['current']['feels']}°C", "inline": True},
+            {"name": "💧 습도", "value": f"{data['current']['humidity']}%", "inline": True},
+            {"name": "⏰ 시간별 기온", "value": hourly_text, "inline": False},
         ],
         "footer": {"text": "Powered by OpenWeatherMap"},
     }
@@ -78,7 +108,23 @@ def fetch_recent_entries():
 def summarize_news_with_gemini(entries):
     if not entries:
         return "최근 24시간 이내 새로운 뉴스가 없습니다."
-    prompt = "아래 뉴스 목록을 보고, 최근 24시간 이내 주요 사건들을 제목 - 요약 템플릿으로 정리해주세요.\n\n"
+    
+    prompt = """아래 뉴스 목록을 보고, 최근 24시간 이내 주요 사건들을 다음 형식으로 정리해주세요:
+
+## 📰 주요 뉴스
+
+### [뉴스 제목]
+🔹 핵심 내용
+- 주요 포인트 1
+- 주요 포인트 2
+- 주요 포인트 3
+
+[원문 링크]
+
+각 뉴스는 위 형식으로 구분하여 작성해주세요.
+중요도 순서대로 정렬하고, 각 뉴스 사이에 빈 줄을 넣어주세요.
+뉴스 목록:
+"""
     prompt += "\n".join(entries)
 
     try:
