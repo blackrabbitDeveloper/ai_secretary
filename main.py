@@ -15,6 +15,7 @@ GEMINI_API_KEY        = os.environ.get('GEMINI_API_KEY')
 CITY               = os.getenv("CITY_NAME", "Seoul,KR")
 DISCORD_WEBHOOK    = os.getenv("DISCORD_WEBHOOK_URL")
 RSS_URL            = "http://feeds.bbci.co.uk/news/world/rss.xml"
+GAMING_RSS_URL     = "https://www.ign.com/rss/news.xml"  # IGN 게임 뉴스 RSS
 TZ                 = pytz.timezone("Asia/Seoul")
 # ────────────────────────────────────────────────────────────────────────
 
@@ -86,23 +87,94 @@ def build_news_embed(summary):
         "footer": {"text": "Powered by Google Gemini & BBC RSS"},
     }
 
+def fetch_gaming_news():
+    feed = feedparser.parse(GAMING_RSS_URL)
+    now = datetime.now(TZ)
+    today8 = now.replace(hour=8, minute=0, second=0, microsecond=0)
+    start = today8 - timedelta(days=1)
+    entries = []
+    for e in feed.entries:
+        pub = datetime(*e.published_parsed[:6], tzinfo=pytz.utc).astimezone(TZ)
+        if pub >= start:
+            entries.append(f"- {e.title} ({e.link})")
+    return entries
+
+def build_gaming_news_embed(summary):
+    title = f"🎮 게임 뉴스 요약 ({(datetime.now(TZ)-timedelta(days=0)).strftime('%Y-%m-%d')})"
+    return {
+        "title": title,
+        "description": summary,
+        "color": 0x9b59b6,
+        "footer": {"text": "Powered by Google Gemini & IGN RSS"},
+    }
+
+def analyze_gaming_trends(entries):
+    if not entries:
+        return "최근 게임 뉴스가 없어 트렌드 분석이 불가능합니다."
+    
+    prompt = """아래 게임 뉴스 목록을 분석하여 다음 정보를 제공해주세요:
+1. 주요 트렌드 (3-5개)
+2. 핵심 키워드 (5-7개)
+3. 주목할 만한 게임/회사/이벤트
+4. 시장 동향 분석
+
+뉴스 목록:
+"""
+    prompt += "\n".join(entries)
+
+    try:
+        res = model.generate_content(prompt)
+        return res.text
+    except Exception as e:
+        print(f"Error analyzing gaming trends: {e}")
+        return "게임 트렌드 분석 중 오류가 발생했습니다."
+
+def build_gaming_trends_embed(analysis):
+    title = f"📊 게임 트렌드 분석 ({(datetime.now(TZ)-timedelta(days=0)).strftime('%Y-%m-%d')})"
+    return {
+        "title": title,
+        "description": analysis,
+        "color": 0x3498db,
+        "footer": {"text": "Powered by Google Gemini & IGN RSS"},
+    }
+
 # 3) 디스코드 전송
 def send_to_discord(embeds):
-    payload = {"embeds": embeds}
-    r = requests.post(DISCORD_WEBHOOK, json=payload)
-    r.raise_for_status()
+    for embed in embeds:
+        payload = {"embeds": [embed]}
+        try:
+            r = requests.post(DISCORD_WEBHOOK, json=payload)
+            r.raise_for_status()
+        except Exception as e:
+            print(f"Error sending embed to Discord: {e}")
+            continue
 
 @app.route("/", methods=["GET"])
 def handler():
     # 날씨
-    wdata  = fetch_weather()
+    wdata = fetch_weather()
     wembed = build_weather_embed(wdata)
-    # 뉴스
+    send_to_discord([wembed])
+    
+    # 일반 뉴스
     entries = fetch_recent_entries()
     summary = summarize_news_with_gemini(entries)
-    nembed  = build_news_embed(summary)
-    # 전송
-    send_to_discord([wembed, nembed])
+    nembed = build_news_embed(summary)
+    send_to_discord([nembed])
+    
+    # 게임 뉴스
+    gaming_entries = fetch_gaming_news()
+    if gaming_entries:
+        # 게임 뉴스 요약
+        gaming_summary = summarize_news_with_gemini(gaming_entries)
+        gembed = build_gaming_news_embed(gaming_summary)
+        send_to_discord([gembed])
+        
+        # 게임 트렌드 분석
+        trends_analysis = analyze_gaming_trends(gaming_entries)
+        tembed = build_gaming_trends_embed(trends_analysis)
+        send_to_discord([tembed])
+    
     return jsonify(status="ok"), 200
 
 if __name__ == "__main__":
