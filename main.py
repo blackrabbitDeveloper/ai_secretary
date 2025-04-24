@@ -58,15 +58,49 @@ def fetch_weather():
         "hourly": hourly_temps
     }
 
+def create_temperature_graph(hourly_temps):
+    # 온도 범위 계산
+    temps = [hour['temp'] for hour in hourly_temps]
+    min_temp = min(temps)
+    max_temp = max(temps)
+    temp_range = max_temp - min_temp
+    
+    # 그래프 높이 설정
+    graph_height = 10
+    graph_width = len(hourly_temps)
+    
+    # 그래프 생성
+    graph = []
+    for i in range(graph_height):
+        row = []
+        for temp in temps:
+            # 온도를 그래프 높이에 맞게 정규화
+            normalized = int((temp - min_temp) / temp_range * (graph_height - 1))
+            if i == graph_height - 1 - normalized:
+                row.append("🌡️")  # 온도 표시
+            elif i > graph_height - 1 - normalized:
+                row.append("█")   # 그래프 바
+            else:
+                row.append(" ")   # 빈 공간
+        graph.append("".join(row))
+    
+    # 시간 축 추가
+    time_labels = [hour['time'] for hour in hourly_temps]
+    time_row = "".join([f"{time:<8}" for time in time_labels])
+    
+    # 온도 축 추가
+    temp_labels = [f"{temp}°C" for temp in temps]
+    temp_row = "".join([f"{temp:<8}" for temp in temp_labels])
+    
+    return "\n".join(graph) + "\n" + time_row + "\n" + temp_row
+
 def build_weather_embed(data):
     icon_url = f"https://openweathermap.org/img/wn/{data['current']['icon']}@2x.png"
     title = f"{CITY} 오늘의 날씨 ({datetime.now(TZ).strftime('%Y-%m-%d')})"
     
     # 시간별 기온 그래프 생성
-    hourly_text = "```\n시간별 기온:\n"
-    for hour in data['hourly']:
-        hourly_text += f"{hour['time']}: {hour['temp']}°C\n"
-    hourly_text += "```"
+    graph = create_temperature_graph(data['hourly'])
+    hourly_text = f"```\n{graph}\n```"
     
     return {
         "title": title,
@@ -77,7 +111,7 @@ def build_weather_embed(data):
             {"name": "🌡️ 현재 온도", "value": f"{data['current']['temp']}°C", "inline": True},
             {"name": "🤗 체감 온도", "value": f"{data['current']['feels']}°C", "inline": True},
             {"name": "💧 습도", "value": f"{data['current']['humidity']}%", "inline": True},
-            {"name": "⏰ 시간별 기온", "value": hourly_text, "inline": False},
+            {"name": "📊 시간별 기온 그래프", "value": hourly_text, "inline": False},
         ],
         "footer": {"text": "Powered by OpenWeatherMap"},
     }
