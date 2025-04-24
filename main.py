@@ -55,20 +55,30 @@ def build_weather_embed(data):
 # 2) 뉴스 수집 & 요약
 def fetch_recent_entries():
     feed = feedparser.parse(RSS_URL)
-    now      = datetime.now(TZ)
-    today8   = now.replace(hour=8, minute=0, second=0, microsecond=0)
-    start    = today8 - timedelta(days=1)
+    now = datetime.now(TZ)
+    start = now - timedelta(hours=24)  # 24시간 이내로 변경
     entries = []
+    
     for e in feed.entries:
-        pub = datetime(*e.published_parsed[:6], tzinfo=pytz.utc).astimezone(TZ)
-        if pub >= start:
-            entries.append(f"- {e.title} ({e.link})")
+        try:
+            if hasattr(e, 'published_parsed'):
+                pub = datetime(*e.published_parsed[:6], tzinfo=pytz.utc).astimezone(TZ)
+            else:
+                # 시간 정보가 없는 경우 현재 시간으로 처리
+                pub = now
+                
+            if pub >= start:
+                entries.append(f"- {e.title} ({e.link})")
+        except Exception as e:
+            print(f"Error processing entry: {e}")
+            continue
+            
     return entries
 
 def summarize_news_with_gemini(entries):
     if not entries:
-        return "전날 08:00 이후 새로운 세계 뉴스가 없습니다."
-    prompt = "아래 뉴스 목록을 보고, 전날 08:00(서울시간) 이후 주요 사건들을 제목 - 요약 템플릿으로 정리해주세요.\n\n"
+        return "최근 24시간 이내 새로운 뉴스가 없습니다."
+    prompt = "아래 뉴스 목록을 보고, 최근 24시간 이내 주요 사건들을 제목 - 요약 템플릿으로 정리해주세요.\n\n"
     prompt += "\n".join(entries)
 
     try:
@@ -76,7 +86,7 @@ def summarize_news_with_gemini(entries):
         return res.text
     except Exception as e:
         print(f"Error calling Gemini API: {e}")
-        return "AI 코드 리뷰 생성 중 오류가 발생했습니다."
+        return "뉴스 요약 생성 중 오류가 발생했습니다."
 
 def build_news_embed(summary):
     title = f"📰 세계 뉴스 요약 ({(datetime.now(TZ)-timedelta(days=0)).strftime('%Y-%m-%d')})"
@@ -90,13 +100,23 @@ def build_news_embed(summary):
 def fetch_gaming_news():
     feed = feedparser.parse(GAMING_RSS_URL)
     now = datetime.now(TZ)
-    today8 = now.replace(hour=8, minute=0, second=0, microsecond=0)
-    start = today8 - timedelta(days=1)
+    start = now - timedelta(hours=24)  # 24시간 이내로 변경
     entries = []
+    
     for e in feed.entries:
-        pub = datetime(*e.published_parsed[:6], tzinfo=pytz.utc).astimezone(TZ)
-        if pub >= start:
-            entries.append(f"- {e.title} ({e.link})")
+        try:
+            if hasattr(e, 'published_parsed'):
+                pub = datetime(*e.published_parsed[:6], tzinfo=pytz.utc).astimezone(TZ)
+            else:
+                # 시간 정보가 없는 경우 현재 시간으로 처리
+                pub = now
+                
+            if pub >= start:
+                entries.append(f"- {e.title} ({e.link})")
+        except Exception as e:
+            print(f"Error processing gaming entry: {e}")
+            continue
+            
     return entries
 
 def build_gaming_news_embed(summary):
