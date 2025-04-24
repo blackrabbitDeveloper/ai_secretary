@@ -15,7 +15,7 @@ GEMINI_API_KEY        = os.environ.get('GEMINI_API_KEY')
 CITY               = os.getenv("CITY_NAME", "Seoul,KR")
 DISCORD_WEBHOOK    = os.getenv("DISCORD_WEBHOOK_URL")
 RSS_URL            = "http://feeds.bbci.co.uk/news/world/rss.xml"
-GAMING_RSS_URL     = "https://www.ign.com/rss/news.xml"  # IGN 게임 뉴스 RSS
+GAMING_RSS_URL     = "https://feeds.feedburner.com/ign/games-all.xml"  # IGN 전체 게임 뉴스 RSS
 TZ                 = pytz.timezone("Asia/Seoul")
 # ────────────────────────────────────────────────────────────────────────
 
