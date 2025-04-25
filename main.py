@@ -65,44 +65,27 @@ def fetch_weather():
     }
 
 def create_temperature_graph(hourly_temps):
-    # 온도 범위 계산
-    temps = [hour['temp'] for hour in hourly_temps]
-    min_temp = min(temps)
-    max_temp = max(temps)
-    temp_range = max_temp - min_temp
-    
-    # 그래프 높이와 너비 설정 (디스코드 채팅창에 맞춤)
-    graph_height = 8  # 높이를 10에서 8로 줄임
-    graph_width = min(len(hourly_temps), 8)  # 최대 8개 시간대만 표시
-    
-    # 시간 간격 계산 (24시간을 8구간으로 나눔)
-    step = len(hourly_temps) // graph_width if len(hourly_temps) > graph_width else 1
-    selected_temps = temps[::step][:graph_width]
-    selected_hours = [hourly_temps[i]['time'] for i in range(0, len(hourly_temps), step)][:graph_width]
-    
-    # 그래프 생성
-    graph = []
-    for i in range(graph_height):
-        row = []
-        for temp in selected_temps:
-            # 온도를 그래프 높이에 맞게 정규화
-            normalized = int((temp - min_temp) / temp_range * (graph_height - 1)) if temp_range > 0 else 0
-            if i == graph_height - 1 - normalized:
-                row.append("🌡️")  # 온도 표시
-            elif i > graph_height - 1 - normalized:
-                row.append("█")   # 그래프 바
-            else:
-                row.append(" ")   # 빈 공간
-        graph.append("".join(row))
-    
-    # 시간 축 추가 (4자리로 맞춤)
-    time_row = " ".join([f"{time:4}" for time in selected_hours])
-    
-    # 온도 축 추가 (4자리로 맞춤)
-    selected_temp_values = [temps[i] for i in range(0, len(temps), step)][:graph_width]
-    temp_row = " ".join([f"{temp:4.1f}" for temp in selected_temp_values])
-    
-    return "\n".join(graph) + "\n" + time_row + "\n" + temp_row + "°C"
+    # 새로운 수평 막대 그래프 구현 (Discord 코드블록에 잘 맞도록)
+    # 최대 8개 구간을 선택해 표시
+    graph_width = min(len(hourly_temps), 8)
+    step = max(1, len(hourly_temps) // graph_width)
+    points = hourly_temps[::step][:graph_width]
+
+    # 온도값 리스트와 범위 계산
+    temps = [pt['temp'] for pt in points]
+    min_temp, max_temp = min(temps), max(temps)
+    temp_range = max_temp - min_temp or 1  # 0으로 나누는 경우 방지
+    max_bar = 20  # 막대 최대 길이
+
+    # 각 구간별 수평 막대 생성
+    lines = []
+    for pt in points:
+        # 비율에 따라 막대 길이 결정
+        length = int((pt['temp'] - min_temp) / temp_range * max_bar)
+        bars = '█' * length
+        # "HH:MM | ███ 15.2°C" 형태
+        lines.append(f"{pt['time']:>5} | {bars:<{max_bar}} {pt['temp']:.1f}°C")
+    return "\n".join(lines)
 
 def build_weather_embed(data):
     icon_url = f"https://openweathermap.org/img/wn/{data['current']['icon']}@2x.png"
