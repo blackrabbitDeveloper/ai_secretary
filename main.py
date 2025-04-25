@@ -14,7 +14,13 @@ OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 GEMINI_API_KEY        = os.environ.get('GEMINI_API_KEY')
 CITY               = os.getenv("CITY_NAME", "Seoul,KR")
 DISCORD_WEBHOOK    = os.getenv("DISCORD_WEBHOOK_URL")
-RSS_URL            = "http://feeds.bbci.co.uk/news/world/rss.xml"
+NEWS_RSS_URLS = [
+    "https://feeds.bbci.co.uk/news/rss.xml",                      # BBC 종합뉴스
+    "https://feeds.bbci.co.uk/news/business/rss.xml",            # BBC 비즈니스
+    "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml", # BBC 과학/환경
+    "https://feeds.bbci.co.uk/news/technology/rss.xml"           # BBC 기술
+]
+
 GAMING_RSS_URLS = [
     "https://webzine.inven.co.kr/news/rss.php",
     "https://www.gamedeveloper.com/rss.xml",
@@ -111,23 +117,31 @@ def build_weather_embed(data):
 
 # 2) 뉴스 수집 & 요약
 def fetch_recent_entries():
-    feed = feedparser.parse(RSS_URL)
     now = datetime.now(TZ)
-    start = now - timedelta(hours=24)  # 24시간 이내로 변경
+    start = now - timedelta(hours=24)
     entries = []
     
-    for e in feed.entries:
+    for rss_url in NEWS_RSS_URLS:
         try:
-            if hasattr(e, 'published_parsed'):
-                pub = datetime(*e.published_parsed[:6], tzinfo=pytz.utc).astimezone(TZ)
-            else:
-                # 시간 정보가 없는 경우 현재 시간으로 처리
-                pub = now
-                
-            if pub >= start:
-                entries.append(f"- {e.title} ({e.link})")
-        except Exception as e:
-            print(f"Error processing entry: {e}")
+            feed = feedparser.parse(rss_url)
+            category = feed.feed.title if hasattr(feed.feed, 'title') else rss_url.split('/')[-2].replace('_', ' ').title()
+            
+            for e in feed.entries:
+                try:
+                    if hasattr(e, 'published_parsed'):
+                        pub = datetime(*e.published_parsed[:6], tzinfo=pytz.utc).astimezone(TZ)
+                    else:
+                        pub = now
+                        
+                    if pub >= start:
+                        # 제목과 링크가 모두 있는 경우에만 추가
+                        if hasattr(e, 'title') and hasattr(e, 'link'):
+                            entries.append(f"- [{category}] {e.title.strip()} ({e.link.strip()})")
+                except Exception as entry_error:
+                    print(f"Error processing entry from {rss_url}: {entry_error}")
+                    continue
+        except Exception as feed_error:
+            print(f"Error fetching RSS feed {rss_url}: {feed_error}")
             continue
             
     return entries
