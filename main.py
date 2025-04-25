@@ -163,6 +163,7 @@ def summarize_news_with_gemini(entries):
 
 각 뉴스는 위 형식으로 구분하여 작성해주세요.
 중요도 순서대로 정렬하고, 각 뉴스 사이에 빈 줄을 넣어주세요.
+전체 내용이 2000자를 넘기지 않도록 하고 최대한 채워주세요.
 뉴스 목록:
 """
     prompt += "\n".join(entries)
