@@ -71,17 +71,22 @@ def create_temperature_graph(hourly_temps):
     max_temp = max(temps)
     temp_range = max_temp - min_temp
     
-    # 그래프 높이 설정
-    graph_height = 10
-    graph_width = len(hourly_temps)
+    # 그래프 높이와 너비 설정 (디스코드 채팅창에 맞춤)
+    graph_height = 8  # 높이를 10에서 8로 줄임
+    graph_width = min(len(hourly_temps), 8)  # 최대 8개 시간대만 표시
+    
+    # 시간 간격 계산 (24시간을 8구간으로 나눔)
+    step = len(hourly_temps) // graph_width if len(hourly_temps) > graph_width else 1
+    selected_temps = temps[::step][:graph_width]
+    selected_hours = [hourly_temps[i]['time'] for i in range(0, len(hourly_temps), step)][:graph_width]
     
     # 그래프 생성
     graph = []
     for i in range(graph_height):
         row = []
-        for temp in temps:
+        for temp in selected_temps:
             # 온도를 그래프 높이에 맞게 정규화
-            normalized = int((temp - min_temp) / temp_range * (graph_height - 1))
+            normalized = int((temp - min_temp) / temp_range * (graph_height - 1)) if temp_range > 0 else 0
             if i == graph_height - 1 - normalized:
                 row.append("🌡️")  # 온도 표시
             elif i > graph_height - 1 - normalized:
@@ -90,15 +95,14 @@ def create_temperature_graph(hourly_temps):
                 row.append(" ")   # 빈 공간
         graph.append("".join(row))
     
-    # 시간 축 추가
-    time_labels = [hour['time'] for hour in hourly_temps]
-    time_row = "".join([f"{time:<8}" for time in time_labels])
+    # 시간 축 추가 (4자리로 맞춤)
+    time_row = " ".join([f"{time:4}" for time in selected_hours])
     
-    # 온도 축 추가
-    temp_labels = [f"{temp}°C" for temp in temps]
-    temp_row = "".join([f"{temp:<8}" for temp in temp_labels])
+    # 온도 축 추가 (4자리로 맞춤)
+    selected_temp_values = [temps[i] for i in range(0, len(temps), step)][:graph_width]
+    temp_row = " ".join([f"{temp:4.1f}" for temp in selected_temp_values])
     
-    return "\n".join(graph) + "\n" + time_row + "\n" + temp_row
+    return "\n".join(graph) + "\n" + time_row + "\n" + temp_row + "°C"
 
 def build_weather_embed(data):
     icon_url = f"https://openweathermap.org/img/wn/{data['current']['icon']}@2x.png"
@@ -149,7 +153,7 @@ def summarize_news_with_gemini(entries):
     if not entries:
         return "최근 24시간 이내 새로운 뉴스가 없습니다."
     
-    prompt = """아래 뉴스 목록을 보고, 최근 24시간 이내 주요 사건들을 다음 형식으로 정리해주세요:
+    prompt = """아래 뉴스 목록을 보고, 최근 24시간 이내 정말 중요한 이슈들을 다음 형식으로 정리해주세요:
 
 ## 📰 주요 뉴스
 
@@ -164,6 +168,7 @@ def summarize_news_with_gemini(entries):
 각 뉴스는 위 형식으로 구분하여 작성해주세요.
 중요도 순서대로 정렬하고, 각 뉴스 사이에 빈 줄을 넣어주세요.
 전체 내용이 2000자를 넘기지 않도록 하고 최대한 채워주세요.
+
 뉴스 목록:
 """
     prompt += "\n".join(entries)
@@ -232,6 +237,9 @@ def analyze_gaming_trends(entries):
 2. 핵심 키워드 (5-7개)
 3. 주목할 만한 게임/회사/이벤트
 4. 시장 동향 분석
+5. 생각해볼 만한 점
+
+전체 내용이 2000자를 넘기지 않도록 하고 최대한 채워주세요.
 
 뉴스 목록:
 """
