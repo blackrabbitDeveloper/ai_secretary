@@ -15,7 +15,6 @@ GEMINI_API_KEY        = os.environ.get('GEMINI_API_KEY')
 CITY               = os.getenv("CITY_NAME", "Seoul,KR")
 DISCORD_WEBHOOK    = os.getenv("DISCORD_WEBHOOK_URL")
 NEWS_RSS_URLS = [
-    "https://feeds.bbci.co.uk/news/rss.xml",                      # BBC 종합뉴스
     "https://feeds.bbci.co.uk/news/business/rss.xml",            # BBC 비즈니스
     "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml", # BBC 과학/환경
     "https://feeds.bbci.co.uk/news/technology/rss.xml"           # BBC 기술
